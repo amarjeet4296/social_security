@@ -124,3 +124,6 @@ social_app_1/
 ## License
 
 [Specify license information]
+
+![diagram-export-27-05-2025-18_23_21](https://github.com/user-attachments/assets/0512cbae-3e85-4b08-809c-4d8f27c504c7)
+
