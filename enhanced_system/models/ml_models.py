@@ -30,12 +30,15 @@ from config.system_config import MODEL_DIR
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ml_models")
 
+
 class ModelManager:
     """
     Manages the ML models for the social security application system.
     Includes training, prediction, and model management functionality.
     """
     
+
+
     def __init__(self):
         """Initialize the model manager."""
         logger.info("Initializing ModelManager")
@@ -58,7 +61,7 @@ class ModelManager:
         self._load_or_create_models()
         
         logger.info("ModelManager initialized successfully")
-    
+
     def _load_or_create_models(self):
         """Load existing models or create new ones if they don't exist."""
         for model_name, model_path in self.model_paths.items():
@@ -72,18 +75,20 @@ class ModelManager:
             else:
                 logger.info(f"Creating new model: {model_name}")
                 self.models[model_name] = self._create_model(model_name)
-    
+
+
     def _create_model(self, model_name: str):
         """Create a new model based on the model name."""
         if model_name == "financial_need":
-            # Gradient Boosting for Financial Need Classification
+            # Random Forest for Financial Need Classification
+            # Justification: Random Forest is robust to outliers and missing values, handles both numerical and categorical data, provides feature importance for explainability, and is well-suited for tabular social security application data with mixed feature types and potential class imbalance.
             # (High, Medium, Low need categories)
             model = Pipeline([
                 ('preprocessor', self._create_preprocessor()),
-                ('classifier', GradientBoostingClassifier(
+                ('classifier', RandomForestClassifier(
                     n_estimators=100,
-                    learning_rate=0.1,
-                    max_depth=3,
+                    max_depth=7,
+                    class_weight='balanced',
                     random_state=42
                 ))
             ])
@@ -134,39 +139,7 @@ class ModelManager:
         joblib.dump(model, self.model_paths[model_name])
         
         return model
-    
-    def _create_preprocessor(self):
-        """Create a column transformer for preprocessing data."""
-        # Define which features are numerical vs categorical
-        numerical_features = [
-            'income', 'family_size', 'monthly_expenses', 
-            'assets_value', 'liabilities_value', 'employment_duration'
-        ]
-        
-        categorical_features = [
-            'employment_status', 'job_title'
-        ]
-        
-        # Create transformers
-        numerical_transformer = Pipeline(steps=[
-            ('scaler', StandardScaler())
-        ])
-        
-        categorical_transformer = Pipeline(steps=[
-            ('onehot', OneHotEncoder(handle_unknown='ignore'))
-        ])
-        
-        # Combine transformers
-        preprocessor = ColumnTransformer(
-            transformers=[
-                ('num', numerical_transformer, numerical_features),
-                ('cat', categorical_transformer, categorical_features)
-            ],
-            remainder='drop'  # Drop other columns
-        )
-        
-        return preprocessor
-    
+
     def _train_with_synthetic_data(self, model, model_name: str):
         """Train the model with synthetic data."""
         logger.info(f"Training {model_name} with synthetic data")
