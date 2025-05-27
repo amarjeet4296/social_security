@@ -23,7 +23,7 @@ from utils.llm_factory import get_llm
 from database.db_setup import Application, get_db
 
 # Import decision engine
-from enhanced_system.models.model_loader import ModelLoader
+from models.model_loader import ModelLoader
 
 # Load environment variables
 load_dotenv()
@@ -222,193 +222,30 @@ class AssessorAgent:
                 except Exception as e:
                     self.logger.warning(f"Model-based decision failed: {str(e)}")
             
-            # Adjust decision based on risk level
-            if is_approved and risk_level == "high":
-                reasons.append("High risk application requires additional review")
-                # We're not automatically rejecting high risk, but flagging for review
-        
-        # Store assessment in database if application_id is provided
-        if "application_id" in data:
-            self._store_assessment(data, assessment_details, is_approved)
-        
-        # Generate detailed explanation
-        assessment_details['explanation'] = self._generate_explanation(data, is_approved, reasons, assessment_details)
-        
-        self.logger.info(f"Assessment completed. Approved: {is_approved}, Risk Level: {risk_level}")
-        return is_approved, reasons, assessment_details
-    
-    def _calculate_risk_level(self, data: Dict[str, Any]) -> str:
-        """
-        Calculate risk level based on application data.
-        
-        Args:
-            data: Dictionary containing application data
-            
-        Returns:
-            Risk level as string: "low", "medium", or "high"
-        """
-        # Try model-based risk assessment first
-        try:
-            if self.risk_model is not None:
-                features = self._extract_features(data)
-                # Normalize features
-                scaler = StandardScaler()
-                scaled_features = scaler.fit_transform([features])
-                
-                # Get risk probability
-                risk_prob = self.risk_model.predict_proba(scaled_features)[0][1]  # Probability of high risk
-                
-                if risk_prob > 0.7:
-                    return "high"
-                elif risk_prob > 0.3:
-                    return "medium"
-                else:
-                    return "low"
-        except Exception as e:
-            self.logger.warning(f"Model-based risk assessment failed: {str(e)}. Falling back to rule-based assessment.")
-        
-        # Rule-based risk scoring as fallback
-        risk_score = 0
-        
-        # Income risk
-        income = data.get('income', 0)
-        if income < 30000:
-            risk_score += 3
-        elif income < 50000:
-            risk_score += 2
-        elif income < 70000:
-            risk_score += 1
-        
-        # Family size risk
-        family_size = data.get('family_size', 0)
-        if family_size > 8:
-            risk_score += 3
-        elif family_size > 5:
-            risk_score += 2
-        elif family_size > 3:
-            risk_score += 1
-        
-        # Financial stability risk
-        if data.get('liabilities_value') and data.get('income'):
-            debt_ratio = data.get('liabilities_value', 0) / data.get('income', 1)
-            if debt_ratio > 0.7:
-                risk_score += 3
-            elif debt_ratio > 0.5:
-                risk_score += 2
-            elif debt_ratio > 0.3:
-                risk_score += 1
-        
-        # Employment stability risk
-        if data.get('employment_status') in ['unemployed', 'student']:
-            risk_score += 3
-        elif data.get('employment_duration', 0) < 12:
-            risk_score += 2
-        elif data.get('employment_duration', 0) < 24:
-            risk_score += 1
-        
-        # Determine risk level
-        if risk_score >= 6:
-            return "high"
-        elif risk_score >= 3:
-            return "medium"
-        return "low"
-    
-    def _extract_features(self, data: Dict[str, Any]) -> List[float]:
-        """
-        Extract numerical features from application data for model input.
-        
-        Args:
-            data: Dictionary containing application data
-            
-        Returns:
-            List of numerical features
-        """
-        features = [
-            data.get('income', 0),
-            data.get('family_size', 0),
-            data.get('monthly_expenses', 0),
-            data.get('assets_value', 0),
-            data.get('liabilities_value', 0),
-            data.get('employment_duration', 0),
-        ]
-        
-        # Add derived features
-        income = data.get('income', 1)  # Use 1 to avoid division by zero
-        family_size = data.get('family_size', 1)
-        
-        # Income per family member
-        features.append(income / family_size)
-        
-        # Debt-to-income ratio
-        features.append(data.get('liabilities_value', 0) / income)
-        
-        # Expense-to-income ratio
-        features.append(data.get('monthly_expenses', 0) / income)
-        
-        # Net worth
-        features.append(data.get('assets_value', 0) - data.get('liabilities_value', 0))
-        
-        return features
-    
-    def _get_model_decision(self, data: Dict[str, Any]) -> bool:
-        """
-        Get eligibility decision from ML model.
-        
-        Args:
-            data: Dictionary containing application data
-            
-        Returns:
-            Boolean indicating eligibility
-        """
-        features = self._extract_features(data)
-        
-        # Normalize features
-        scaler = StandardScaler()
-        scaled_features = scaler.fit_transform([features])
-        
-        # Get model prediction
-        prediction = self.eligibility_model.predict(scaled_features)[0]
-        
-        return bool(prediction)
-    
-    def _store_assessment(self, data: Dict[str, Any], assessment_details: Dict[str, Any], is_approved: bool) -> None:
-        """
-        Store assessment results in the database.
-        
-        Args:
-            data: Application data
-            assessment_details: Assessment details
-            is_approved: Whether the application is approved
-        """
-        try:
-            # Get application from database
-            app = self.db.query(Application).filter(
-                Application.filename == data["filename"]
-            ).first()
-            
-            if app:
-                # Update application with assessment results
-                app.assessment_status = "approved" if is_approved else "rejected"
-                app.risk_level = assessment_details['risk_level']
-                app.updated_at = datetime.utcnow()
-                
-                self.db.commit()
-                self.logger.info(f"Assessment stored for application {data['application_id']}")
             else:
-                self.logger.warning(f"Application with ID {data['application_id']} not found in database")
-        except Exception as e:
-            self.logger.error(f"Error storing assessment: {str(e)}")
-            self.db.rollback()
+                processed_data[field] = 0 if field_type == int else 0.0
+        
+        # Ensure required string fields are present
+        string_fields = ['employment_status', 'job_title', 'address']
+        for field in string_fields:
+            if field not in processed_data or not processed_data[field]:
+                processed_data[field] = 'unknown'
+        
+        # Handle special cases
+        if processed_data['family_size'] <= 0:
+            processed_data['family_size'] = 1
+        
+        return processed_data
     
-    def _generate_explanation(self, data: Dict[str, Any], is_approved: bool, reasons: List[str], assessment_details: Dict[str, Any]) -> str:
+    def _generate_llm_explanation(self, is_approved: bool, assessment_details: Dict[str, Any], 
+                                 application_data: Dict[str, Any]) -> str:
         """
-        Generate a detailed explanation of the assessment decision.
+        Generate a natural language explanation of the assessment decision using LLM.
         
         Args:
-            data: Application data
-            is_approved: Whether the application is approved
-            reasons: List of rejection reasons
-            assessment_details: Assessment details
+            is_approved: Whether the application was approved
+            assessment_details: Assessment results from ML models
+            application_data: Processed application data
             
         Returns:
             Explanation text

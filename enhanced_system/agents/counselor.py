@@ -102,47 +102,75 @@ class CounselorAgent:
         except Exception as e:
             self.logger.error(f"Error initializing policy documents: {str(e)}")
     
-    def generate_recommendations(self, application_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def generate_recommendations(
+        self, 
+        application_data: Dict[str, Any],
+        assessment_status: Optional[str] = None,
+        risk_level: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Generate personalized recommendations based on application data.
+        Generate personalized recommendations based on application data, assessment status, and risk level.
         
         Args:
             application_data: Dictionary containing application data
+            assessment_status: The assessment status (e.g., 'approved', 'rejected')
+            risk_level: The calculated risk level (e.g., 'low', 'medium', 'high')
             
         Returns:
-            List of recommendation dictionaries
+            Dictionary containing 'recommendations' list and 'summary' string.
         """
-        recommendations = []
+        recommendations_list = []
         application_id = application_data.get("application_id")
         
+        # Basic summary, can be enhanced based on status and risk
+        summary_message = f"Counseling session for application {application_id}."
+
         try:
-            self.logger.info(f"Generating recommendations for application {application_id}")
+            self.logger.info(f"Generating recommendations for application {application_id} (Status: {assessment_status}, Risk: {risk_level})")
             
+            # TODO: Pass assessment_status and risk_level to helper methods if they need to adapt their logic
             # Generate financial support recommendations
             financial_recommendations = self._generate_financial_recommendations(application_data)
-            recommendations.extend(financial_recommendations)
+            recommendations_list.extend(financial_recommendations)
             
             # Generate economic enablement recommendations
             enablement_recommendations = self._generate_enablement_recommendations(application_data)
-            recommendations.extend(enablement_recommendations)
+            recommendations_list.extend(enablement_recommendations)
             
             # Generate document and process recommendations
             process_recommendations = self._generate_process_recommendations(application_data)
-            recommendations.extend(process_recommendations)
+            recommendations_list.extend(process_recommendations)
+
+            # Enhance summary based on assessment status
+            if assessment_status == "approved":
+                summary_message += " Application approved. Recommendations focus on next steps and available support."
+            elif assessment_status == "rejected":
+                summary_message += " Application rejected. Recommendations focus on areas for improvement and alternative options."
+            elif assessment_status:
+                summary_message += f" Application status is {assessment_status}. Review recommendations for guidance."
+            else:
+                summary_message += " Application status pending or unknown. General recommendations provided."
             
             # Store recommendations in database if application_id is provided
             if application_id:
-                self._store_recommendations(application_id, recommendations)
+                self._store_recommendations(application_id, recommendations_list)
             
-            return recommendations
+            return {
+                "recommendations": recommendations_list,
+                "summary": summary_message 
+            }
         except Exception as e:
             self.logger.error(f"Error generating recommendations: {str(e)}")
-            return [{
+            error_recommendation = {
                 "category": "Error",
                 "priority": "high",
                 "description": f"Error generating recommendations: {str(e)}",
                 "action_items": ["Please try again later or contact support"]
-            }]
+            }
+            return {
+                "recommendations": [error_recommendation],
+                "summary": f"Failed to generate recommendations for application {application_id} due to an error. Please contact support."
+            }
     
     def explain_decision(self, application_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -318,7 +346,7 @@ class CounselorAgent:
             USER QUERY:
             {user_query}
             
-            {'IMPORTANT INSTRUCTION: The user\'s application is currently under review (soft decline). Proactively suggest economic enablement options like vocational training, job placement assistance, or business development support tailored to their situation. Make your response interactive by suggesting follow-up questions the user could ask about specific programs.' if is_soft_decline else ''}
+            {'IMPORTANT INSTRUCTION: The user''s application is currently under review (soft decline). Proactively suggest economic enablement options like vocational training, job placement assistance, or business development support tailored to their situation. Make your response interactive by suggesting follow-up questions the user could ask about specific programs.' if is_soft_decline else ''}
             
             Please provide a helpful, accurate, and compassionate response to the user's query.
             Focus on providing practical guidance and clear next steps based on their application status and the available information.

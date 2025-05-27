@@ -435,71 +435,43 @@ elif st.session_state.current_tab == "Apply":
 # Documents page
 elif st.session_state.current_tab == "Documents":
     st.markdown('<h1 class="main-header">Upload Supporting Documents</h1>', unsafe_allow_html=True)
-    
     if not st.session_state.application_id:
         st.warning("Please enter your Application ID in the sidebar or submit a new application first")
     else:
         st.info(f"Uploading documents for Application ID: {st.session_state.application_id}")
-        
-        # Document upload section
         document_type = st.selectbox(
             "Document Type",
             ["emirates_id", "bank_statement", "resume", "assets_liabilities", "income_statement", "other"],
             help="Select the type of document you're uploading"
         )
-        
         uploaded_file = st.file_uploader(
             "Upload Document",
             type=["pdf", "png", "jpg", "jpeg", "xlsx", "xls", "csv"],
             help="Upload supporting documents in PDF, image, or spreadsheet format"
         )
-        
         if uploaded_file and st.button("Upload Document"):
-            # Upload document
             response = upload_document(uploaded_file, st.session_state.application_id, document_type)
-            
             if response:
                 st.success(f"Document uploaded successfully: {uploaded_file.name}")
-                
-                # Add to uploaded documents list
-                if "uploaded_documents" not in st.session_state:
-                    st.session_state.uploaded_documents = []
-                
-                st.session_state.uploaded_documents.append({
-                    "filename": uploaded_file.name,
-                    "document_type": document_type,
-                    "upload_time": datetime.datetime.now().isoformat()
-                })
-                
-                # Refresh application data
                 app_data = get_application_status(st.session_state.application_id)
                 if app_data:
                     st.session_state.application_data = app_data
         
-        # Display uploaded documents
         if st.session_state.application_data and "documents" in st.session_state.application_data:
             st.markdown("### Uploaded Documents")
-            
             docs = st.session_state.application_data["documents"]
-            
             if not docs:
                 st.info("No documents uploaded yet")
             else:
                 for doc in docs:
                     col1, col2, col3 = st.columns([2, 2, 1])
-                    with col1:
-                        st.write(f"**{doc['filename']}**")
-                    with col2:
-                        st.write(f"Type: {doc.get('document_type', 'Unknown')}")
+                    with col1: st.write(f"**{doc['filename']}**")
+                    with col2: st.write(f"Type: {doc.get('document_type', 'Unknown')}")
                     with col3:
-                        # Safely handle the case where uploaded_at doesn't exist
-                        if 'uploaded_at' in doc:
-                            st.write(f"Uploaded: {doc['uploaded_at'].split('T')[0]}")
-                        else:
-                            st.write("Uploaded: Not available")
+                        if 'uploaded_at' in doc: st.write(f"Uploaded: {doc['uploaded_at'].split('T')[0]}")
+                        else: st.write("Uploaded: Not available")
                     st.markdown("---")
         
-        # Check application status button
         if st.button("Check Application Status"):
             st.session_state.current_tab = "Status"
             st.experimental_rerun()
@@ -507,18 +479,10 @@ elif st.session_state.current_tab == "Documents":
 # Status page
 elif st.session_state.current_tab == "Status":
     st.markdown('<h1 class="main-header">Application Status</h1>', unsafe_allow_html=True)
-    
     if not st.session_state.application_id:
         st.warning("Please enter your Application ID in the sidebar to check your status")
     else:
-        # Refresh application data
         if st.button("Refresh Status"):
-            app_data = get_application_status(st.session_state.application_id)
-            if app_data:
-                st.session_state.application_data = app_data
-                st.success("Status updated")
-        
-        if not st.session_state.application_data:
             app_data = get_application_status(st.session_state.application_id)
             if app_data:
                 st.session_state.application_data = app_data
@@ -886,4 +850,4 @@ elif st.session_state.current_tab == "About":
 
 # Display footer
 st.markdown("---")
-st.markdown("© 2025 Social Security Support System | Powered by AI | Privacy Policy | Terms of Service")
+st.markdown(" 2025 Social Security Support System | Powered by AI | Privacy Policy | Terms of Service")

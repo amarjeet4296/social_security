@@ -152,6 +152,8 @@ class DataCollectorAgent:
             return self._extract_bank_statement_data(text)
         elif document_type == "resume":
             return self._extract_resume_data(text)
+        elif document_type == "credit_report":
+            return self._extract_credit_report_data(text)
         else:
             # Generic extraction for other document types
             return self._extract_generic_data(text)
@@ -180,6 +182,8 @@ class DataCollectorAgent:
                     return self._extract_bank_statement_data(text)
                 elif document_type == "resume":
                     return self._extract_resume_data(text)
+                elif document_type == "credit_report":
+                    return self._extract_credit_report_data(text)
                 else:
                     return self._extract_generic_data(text)
         except Exception as e:
@@ -199,6 +203,8 @@ class DataCollectorAgent:
                 return self._extract_bank_statement_data(combined_text)
             elif document_type == "resume":
                 return self._extract_resume_data(combined_text)
+            elif document_type == "credit_report":
+                return self._extract_credit_report_data(combined_text)
             else:
                 return self._extract_generic_data(combined_text)
         except Exception as e:
@@ -621,6 +627,51 @@ class DataCollectorAgent:
         
         return data
     
+    def _extract_credit_report_data(self, text: str) -> Dict[str, Any]:
+        """
+        Extract data from a credit report.
+        Placeholder implementation. Will require more specific parsing logic.
+        
+        Args:
+            text: Extracted text from OCR or PDF
+            
+        Returns:
+            Dictionary of extracted credit data
+        """
+        self.logger.info("Extracting data from credit report...")
+        data = {}
+        
+        # Placeholder: Simple regex for credit score (example)
+        score_match = re.search(r'(?:Credit Score|Risk Score)[:\s]*(\d{3})', text, re.IGNORECASE)
+        if score_match:
+            data['credit_score'] = int(score_match.group(1))
+            
+        # Placeholder: Total debt (example)
+        debt_match = re.search(r'(?:Total Debt|Total Balances)[:\s]*[\$\€\£]?([\d,]+\.?\d*)', text, re.IGNORECASE)
+        if debt_match:
+            try:
+                data['total_debt'] = float(debt_match.group(1).replace(',', ''))
+            except ValueError:
+                self.logger.warning(f"Could not parse total debt value: {debt_match.group(1)}")
+
+        # Placeholder: Number of open accounts (example)
+        open_accounts_match = re.search(r'(?:Open Accounts|Number of Open Accounts)[:\s]*(\d+)', text, re.IGNORECASE)
+        if open_accounts_match:
+            data['open_accounts'] = int(open_accounts_match.group(1))
+
+        # Add more specific regex or LLM calls here for other fields like:
+        # - Payment history (e.g., delinquencies)
+        # - Types of accounts (credit cards, loans)
+        # - Credit inquiries
+        
+        if not data:
+            self.logger.warning("No specific credit report data extracted. Falling back to generic extraction if needed or returning empty.")
+            # Optionally, call generic extraction or LLM for broader parsing
+            # data.update(self._extract_generic_data(text)) # Example: if you want to combine
+
+        self.logger.info(f"Credit report extraction result: {data}")
+        return data
+
     def extract_missing_fields(self, text: str, missing_fields: List[str]) -> Dict[str, Any]:
         """
         Extract specific missing fields from text.
